@@ -29,11 +29,10 @@
             z-index: 1;
         }
 
-        /* Welcome Overlay for 100% Guaranteed Audio Start */
         .welcome-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(20, 7, 38, 0.92);
+            background: rgba(20, 7, 38, 0.94);
             backdrop-filter: blur(12px);
             z-index: 999;
             display: flex;
@@ -269,12 +268,11 @@
 
     <canvas id="confetti"></canvas>
 
-    <!-- গান লোড ও প্লে করার জন্য -->
+    <!-- তোমার অডিও ফাইলের হুবহু নাম -->
     <audio id="bgMusic" preload="auto">
-        <source src="songB.mp3" type="audio/mpeg">
+        <source src="songB_2.mp3" type="audio/mpeg">
     </audio>
 
-    <!-- লিংক ওপেন করলে এই সুন্দর গিফট স্ক্রিন আসবে, টাচ করলেই গান ও কার্ড চালু হবে -->
     <div class="welcome-overlay" id="welcomeScreen" onclick="startExperience()">
         <div class="gift-bounce">🎁</div>
         <h2 style="font-size: 1.6rem; margin-bottom: 10px; color: #ffdde1;">বর্ষার জন্য একটি স্পেশাল সারপ্রাইজ আছে! ✨</h2>
@@ -284,7 +282,8 @@
 
     <div class="card">
         <div class="photo-frame">
-            <img src="pic.png" alt="Borsha">
+            <!-- তোমার ছবির ফাইলের হুবহু নাম -->
+            <img src="pic_2.png" alt="Borsha">
         </div>
 
         <h1>Happy Birthday Borsha!</h1>
@@ -334,159 +333,4 @@
                 bgMusic.currentTime = START_TIME;
                 bgMusic.play().then(() => {
                     isMusicStarted = true;
-                    musicBtn.innerText = '🔊 গান বন্ধ করো';
-                    // যদি ব্রাউজার প্লে হওয়ার পর ০ সেকেন্ডে নামিয়ে দেয়, আবার ৩৪-এ সেট করবে
-                    setTimeout(() => {
-                        if (bgMusic.currentTime < START_TIME - 1) {
-                            bgMusic.currentTime = START_TIME;
-                        }
-                    }, 200);
-                }).catch(err => {
-                    console.log("Audio play waiting for interaction:", err);
-                    musicBtn.innerText = '🔇 গান চালু করো';
-                });
-            };
-
-            if (bgMusic.readyState >= 1) {
-                startPlay();
-            } else {
-                bgMusic.addEventListener('loadedmetadata', startPlay, { once: true });
-                bgMusic.load();
-            }
-        }
-
-        // পেজ লোড হলে অটোপ্লে চেষ্টা করবে
-        window.addEventListener('load', () => {
-            bgMusic.currentTime = START_TIME;
-            bgMusic.play().then(() => {
-                isMusicStarted = true;
-                document.getElementById('welcomeScreen').classList.add('hidden');
-            }).catch(() => {
-                // ব্রাউজার ব্লক করলে ওয়েলকাম স্ক্রিন দেখাবে
-            });
-        });
-
-        // ওয়েলকাম স্ক্রিনে ক্লিক করলেই গান ও কার্ড চালু হবে
-        function startExperience() {
-            document.getElementById('welcomeScreen').classList.add('hidden');
-            burstConfetti();
-            forcePlayFrom34();
-        }
-
-        // ১:৪৯ (১০৯ সেকেন্ড) হলে অটোমেটিক থামবে
-        bgMusic.addEventListener('timeupdate', () => {
-            if (isMusicStarted && !bgMusic.paused && bgMusic.currentTime < START_TIME - 1) {
-                bgMusic.currentTime = START_TIME;
-            }
-            if (bgMusic.currentTime >= END_TIME) {
-                bgMusic.pause();
-                bgMusic.currentTime = START_TIME;
-                musicBtn.innerText = '🔁 আবার বাজাও';
-            }
-        });
-
-        function toggleMusic() {
-            if (bgMusic.paused) {
-                if (bgMusic.currentTime < START_TIME || bgMusic.currentTime >= END_TIME) {
-                    bgMusic.currentTime = START_TIME;
-                }
-                bgMusic.play();
-                musicBtn.innerText = '🔊 গান বন্ধ করো';
-            } else {
-                bgMusic.pause();
-                musicBtn.innerText = '🔇 গান চালু করো';
-            }
-        }
-
-        function blowCandle() {
-            if (!candleBlown) {
-                candleBlown = true;
-                document.getElementById('flame').classList.add('out');
-                document.getElementById('smoke').classList.add('rise');
-                document.getElementById('cakeHint').innerText = '🎉 ইয়াহু! শুভ জন্মদিন বর্ষা!';
-                document.getElementById('micBtn').style.display = 'none';
-                burstConfetti();
-                if (bgMusic.paused) forcePlayFrom34();
-            }
-        }
-
-        async function enableMicBlow() {
-            const micBtn = document.getElementById('micBtn');
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const analyser = audioCtx.createAnalyser();
-                const microphone = audioCtx.createMediaStreamSource(stream);
-                microphone.connect(analyser);
-                analyser.fftSize = 256;
-
-                const dataArray = new Uint8Array(analyser.frequencyBinCount);
-                micBtn.innerText = '🌬️ এখন ফোনের নিচে জোরে ফুঁ দাও...';
-
-                function detectBlow() {
-                    if (candleBlown) {
-                        stream.getTracks().forEach(track => track.stop());
-                        return;
-                    }
-                    analyser.getByteFrequencyData(dataArray);
-                    let sum = 0;
-                    for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-                    if ((sum / dataArray.length) > 55) {
-                        blowCandle();
-                        stream.getTracks().forEach(track => track.stop());
-                    } else {
-                        requestAnimationFrame(detectBlow);
-                    }
-                }
-                detectBlow();
-            } catch (err) {
-                micBtn.innerText = '⚠️ মাইক পারমিশন মেলেনি, মোমবাতিতে ক্লিক করো';
-            }
-        }
-
-        const canvas = document.getElementById('confetti');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        const pieces = [];
-        const colors = ['#ff416c', '#ff4b2b', '#ffd700', '#00e676', '#00b0ff', '#e040fb'];
-
-        for (let i = 0; i < 130; i++) {
-            pieces.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height - canvas.height,
-                size: Math.random() * 8 + 4,
-                color: colors[Math.floor(Math.random() * colors.length)],
-                speedY: Math.random() * 3 + 1.5,
-                speedX: Math.random() * 2 - 1,
-                rotation: Math.random() * 360
-            });
-        }
-
-        function burstConfetti() { pieces.forEach(p => p.speedY = Math.random() * 6 + 3.5); }
-
-        function updateConfetti() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            pieces.forEach(p => {
-                p.y += p.speedY; p.x += p.speedX; p.rotation += 2;
-                if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
-                ctx.save();
-                ctx.translate(p.x, p.y);
-                ctx.rotate(p.rotation * Math.PI / 180);
-                ctx.fillStyle = p.color;
-                ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-                ctx.restore();
-            });
-            requestAnimationFrame(updateConfetti);
-        }
-
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
-
-        updateConfetti();
-    </script>
-</body>
-</html>
+                    musicBtn.
