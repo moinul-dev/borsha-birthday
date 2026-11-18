@@ -29,6 +29,39 @@
             z-index: 1;
         }
 
+        /* Welcome Overlay for 100% Guaranteed Audio Start */
+        .welcome-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(20, 7, 38, 0.92);
+            backdrop-filter: blur(12px);
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 25px;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+
+        .welcome-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .gift-bounce {
+            font-size: 75px;
+            animation: bounceGift 1.2s infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes bounceGift {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.15) rotate(5deg); }
+        }
+
         .card {
             position: relative;
             z-index: 2;
@@ -176,8 +209,8 @@
             background: linear-gradient(45deg, #ff416c, #ff4b2b);
             color: white;
             border: none;
-            padding: 13px 28px;
-            font-size: 1.05rem;
+            padding: 14px 30px;
+            font-size: 1.08rem;
             font-weight: 700;
             border-radius: 50px;
             cursor: pointer;
@@ -200,7 +233,7 @@
         }
 
         .music-toggle {
-            display: none;
+            display: inline-block;
             margin: 15px auto 0;
             background: rgba(255, 255, 255, 0.15);
             border: 1px solid rgba(255, 255, 255, 0.3);
@@ -213,7 +246,6 @@
         }
 
         .message-box {
-            display: none;
             margin-top: 20px;
             padding: 18px;
             background: rgba(0, 0, 0, 0.28);
@@ -237,13 +269,22 @@
 
     <canvas id="confetti"></canvas>
 
-    <!-- সহজ নামের অডিও ফাইল -->
-    <audio id="bgMusic" src="./song.mp3" preload="auto"></audio>
+    <!-- গান লোড ও প্লে করার জন্য -->
+    <audio id="bgMusic" preload="auto">
+        <source src="songB.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- লিংক ওপেন করলে এই সুন্দর গিফট স্ক্রিন আসবে, টাচ করলেই গান ও কার্ড চালু হবে -->
+    <div class="welcome-overlay" id="welcomeScreen" onclick="startExperience()">
+        <div class="gift-bounce">🎁</div>
+        <h2 style="font-size: 1.6rem; margin-bottom: 10px; color: #ffdde1;">বর্ষার জন্য একটি স্পেশাল সারপ্রাইজ আছে! ✨</h2>
+        <p style="color: #f8bbd0; margin-bottom: 25px;">ওপেন করতে নিচের বাটনে টাচ করো</p>
+        <button class="btn">🎉 সারপ্রাইজটি ওপেন করো</button>
+    </div>
 
     <div class="card">
         <div class="photo-frame">
-            <!-- সহজ নামের ছবির ফাইল -->
-            <img src="./pic.png" alt="Borsha">
+            <img src="pic.png" alt="Borsha">
         </div>
 
         <h1>Happy Birthday Borsha!</h1>
@@ -263,7 +304,6 @@
 
         <div class="btn-group" id="actionBtns">
             <button class="mic-btn" id="micBtn" onclick="enableMicBlow()">🎤 ফুঁ দিয়ে নেভাতে মাইক চালু করো</button>
-            <button class="btn" id="openBtn" onclick="revealWish()">🎁 সারপ্রাইজ মেসেজটি দেখো</button>
         </div>
 
         <div class="message-box" id="wishBox">
@@ -281,33 +321,75 @@
         const bgMusic = document.getElementById('bgMusic');
         const musicBtn = document.getElementById('musicBtn');
         let candleBlown = false;
-        let songStarted = false;
+        let isMusicStarted = false;
 
-        // "Tu jo rootha toh kaun hansega..." অংশটি ৩২ সেকেন্ড থেকে শুরু হয়
-        const START_TIME = 32;
+        const START_TIME = 34;   // 0:34 ("Kaise kahoon main tumsa koi...")
+        const END_TIME = 109;    // 1:49 ("Mere, mere iraaday" শেষ হওয়া পর্যন্ত)
 
-        function playSongFromVerse() {
-            if (!songStarted) {
+        function forcePlayFrom34() {
+            bgMusic.muted = false;
+            bgMusic.volume = 1.0;
+
+            const startPlay = () => {
                 bgMusic.currentTime = START_TIME;
-                songStarted = true;
+                bgMusic.play().then(() => {
+                    isMusicStarted = true;
+                    musicBtn.innerText = '🔊 গান বন্ধ করো';
+                    // যদি ব্রাউজার প্লে হওয়ার পর ০ সেকেন্ডে নামিয়ে দেয়, আবার ৩৪-এ সেট করবে
+                    setTimeout(() => {
+                        if (bgMusic.currentTime < START_TIME - 1) {
+                            bgMusic.currentTime = START_TIME;
+                        }
+                    }, 200);
+                }).catch(err => {
+                    console.log("Audio play waiting for interaction:", err);
+                    musicBtn.innerText = '🔇 গান চালু করো';
+                });
+            };
+
+            if (bgMusic.readyState >= 1) {
+                startPlay();
+            } else {
+                bgMusic.addEventListener('loadedmetadata', startPlay, { once: true });
+                bgMusic.load();
             }
-            bgMusic.play().then(() => {
-                musicBtn.style.display = 'inline-block';
-                musicBtn.innerText = '🔊 গান বন্ধ করো';
-            }).catch(() => {
-                musicBtn.style.display = 'inline-block';
-                musicBtn.innerText = '🔇 গান চালু করো';
-            });
         }
 
-        bgMusic.addEventListener('ended', () => {
+        // পেজ লোড হলে অটোপ্লে চেষ্টা করবে
+        window.addEventListener('load', () => {
             bgMusic.currentTime = START_TIME;
-            bgMusic.play();
+            bgMusic.play().then(() => {
+                isMusicStarted = true;
+                document.getElementById('welcomeScreen').classList.add('hidden');
+            }).catch(() => {
+                // ব্রাউজার ব্লক করলে ওয়েলকাম স্ক্রিন দেখাবে
+            });
+        });
+
+        // ওয়েলকাম স্ক্রিনে ক্লিক করলেই গান ও কার্ড চালু হবে
+        function startExperience() {
+            document.getElementById('welcomeScreen').classList.add('hidden');
+            burstConfetti();
+            forcePlayFrom34();
+        }
+
+        // ১:৪৯ (১০৯ সেকেন্ড) হলে অটোমেটিক থামবে
+        bgMusic.addEventListener('timeupdate', () => {
+            if (isMusicStarted && !bgMusic.paused && bgMusic.currentTime < START_TIME - 1) {
+                bgMusic.currentTime = START_TIME;
+            }
+            if (bgMusic.currentTime >= END_TIME) {
+                bgMusic.pause();
+                bgMusic.currentTime = START_TIME;
+                musicBtn.innerText = '🔁 আবার বাজাও';
+            }
         });
 
         function toggleMusic() {
             if (bgMusic.paused) {
-                if (bgMusic.currentTime < START_TIME) bgMusic.currentTime = START_TIME;
+                if (bgMusic.currentTime < START_TIME || bgMusic.currentTime >= END_TIME) {
+                    bgMusic.currentTime = START_TIME;
+                }
                 bgMusic.play();
                 musicBtn.innerText = '🔊 গান বন্ধ করো';
             } else {
@@ -323,14 +405,10 @@
                 document.getElementById('smoke').classList.add('rise');
                 document.getElementById('cakeHint').innerText = '🎉 ইয়াহু! শুভ জন্মদিন বর্ষা!';
                 document.getElementById('micBtn').style.display = 'none';
-                document.getElementById('wishBox').style.display = 'block';
-                document.getElementById('openBtn').style.display = 'none';
                 burstConfetti();
-                playSongFromVerse();
+                if (bgMusic.paused) forcePlayFrom34();
             }
         }
-
-        function revealWish() { blowCandle(); }
 
         async function enableMicBlow() {
             const micBtn = document.getElementById('micBtn');
